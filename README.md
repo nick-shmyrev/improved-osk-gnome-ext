@@ -21,7 +21,7 @@ This extension is a fork of [schuhumi/gnome-shell-extension-improve-osk](https:/
 Clone the git repo
 
 ```console
-git clone https://github.com/SebastianLuebke/improved-osk-gnome-ext.git ~/.local/share/gnome-shell/extensions/improvedosk@luebke.io
+git clone https://github.com/nick-shmyrev/improved-osk-gnome-ext.git ~/.local/share/gnome-shell/extensions/improvedosk@luebke.io
 ```
 
 reload gnome by pressing alt + F2 and enter r
