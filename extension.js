@@ -7,6 +7,7 @@ const PanelMenu = imports.ui.panelMenu;
 const Layout = imports.ui.layout;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
+const InputSourceManager = imports.ui.status.keyboard;
 
 const A11Y_APPLICATIONS_SCHEMA = "org.gnome.desktop.a11y.applications";
 let backup_lastDeviceIsTouchScreen;
@@ -15,6 +16,7 @@ let backup_DefaultKeysForRow;
 let backup_keyboardControllerConstructor;
 let backup_keyvalPress;
 let backup_keyvalRelease;
+let backup_commitString;
 let _indicator;
 
 let settings = ExtensionUtils.getSettings(
@@ -497,6 +499,15 @@ function override_keyboardControllerConstructor() {
     this.emit("panel-state", state);
   });
 }
+
+function override_commitString(string, fromKey) {
+  if (string == null) return false;
+  /* Let ibus methods fall through keyval emission */
+  if (fromKey && this._currentSource.type == InputSourceManager.INPUT_SOURCE_TYPE_IBUS) return false;
+
+  Main.inputMethod.commit(string);
+  return true;
+}
 /*
 To add a number row the KeyboardModel needs to be overriden but that will break the keyboard right now :(
 
@@ -549,6 +560,7 @@ function enable_overrides() {
   Keyboard.KeyboardController.prototype[
     "keyvalRelease"
   ] = override_keyvalRelease;
+  Keyboard.KeyboardController.prototype["commitString"] = override_commitString;
 }
 
 function disable_overrides() {
@@ -565,6 +577,7 @@ function disable_overrides() {
   Keyboard.KeyboardManager.prototype[
     "_lastDeviceIsTouchscreen"
   ] = backup_lastDeviceIsTouchScreen;
+  Keyboard.KeyboardController.prototype["commitString"] = backup_commitString;
 }
 
 // Extension
@@ -578,6 +591,7 @@ function init() {
   backup_keyvalPress = Keyboard.KeyboardController.prototype["keyvalPress"];
   backup_keyvalRelease = Keyboard.KeyboardController.prototype["keyvalRelease"];
   backup_relayout = Keyboard.Keyboard.prototype["_relayout"];
+  backup_commitString = Keyboard.KeyboardController.prototype["commitString"];
 }
 
 function enable() {
