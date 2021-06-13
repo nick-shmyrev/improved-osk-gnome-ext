@@ -501,12 +501,9 @@ function override_keyboardControllerConstructor() {
 }
 
 function override_commitString(string, fromKey) {
-  if (string == null) return false;
-  /* Let ibus methods fall through keyval emission */
-  if (fromKey && this._currentSource.type == InputSourceManager.INPUT_SOURCE_TYPE_IBUS) return false;
-
-  Main.inputMethod.commit(string);
-  return true;
+  // Prevents alpha-numeric key presses from bypassing override_keyvalPress()
+  // Fixes "ctrl/alt/super + key" combinations not working
+  return false;
 }
 /*
 To add a number row the KeyboardModel needs to be overriden but that will break the keyboard right now :(
