@@ -1,10 +1,8 @@
 "use strict";
-const { Gio, St, Shell, Clutter, GObject } = imports.gi;
+const { Gio, St, Clutter, GObject } = imports.gi;
 const Main = imports.ui.main;
 const Keyboard = imports.ui.keyboard;
-const Lang = imports.lang;
 const PanelMenu = imports.ui.panelMenu;
-const Layout = imports.ui.layout;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const InputSourceManager = imports.ui.status.keyboard;
@@ -83,62 +81,11 @@ function override_relayout() {
   }
 }
 
-function override_keyvalRelease(keyval) {
-  if (
-    keyval == Clutter.KEY_Control_L ||
-    keyval == Clutter.KEY_Alt_L ||
-    keyval == Clutter.KEY_Super_L
-  ) {
-    return;
-  }
-
-  this._virtualDevice.notify_keyval(
-    Clutter.get_current_event_time(),
-    keyval,
-    Clutter.KeyState.RELEASED
-  );
-
-  if (this._controlActive) {
-    this._virtualDevice.notify_keyval(
-      Clutter.get_current_event_time(),
-      Clutter.KEY_Control_L,
-      Clutter.KeyState.RELEASED
-    );
-    this._controlActive = false;
-    Main.layoutManager.keyboardBox.remove_style_class_name(
-      "control-key-latched"
-    );
-  }
-  if (this._superActive) {
-    this._virtualDevice.notify_keyval(
-      Clutter.get_current_event_time(),
-      Clutter.KEY_Super_L,
-      Clutter.KeyState.RELEASED
-    );
-    this._superActive = false;
-    Main.layoutManager.keyboardBox.remove_style_class_name("super-key-latched");
-  }
-  if (this._altActive) {
-    this._virtualDevice.notify_keyval(
-      Clutter.get_current_event_time(),
-      Clutter.KEY_Alt_L,
-      Clutter.KeyState.RELEASED
-    );
-    this._altActive = false;
-    Main.layoutManager.keyboardBox.remove_style_class_name("alt-key-latched");
-  }
-}
-
 function override_keyvalPress(keyval) {
-  if (keyval == Clutter.KEY_Control_L) {
-    this._controlActive = !this._controlActive; // This allows to revert an accidental tap on Ctrl by tapping on it again
-  }
-  if (keyval == Clutter.KEY_Super_L) {
-    this._superActive = !this._superActive;
-  }
-  if (keyval == Clutter.KEY_Alt_L) {
-    this._altActive = !this._altActive;
-  }
+  // This allows manually releasing a latched ctrl/super/alt keys by tapping on them again
+  if (keyval == Clutter.KEY_Control_L) this._controlActive = !this._controlActive;
+  if (keyval == Clutter.KEY_Super_L) this._superActive = !this._superActive;
+  if (keyval == Clutter.KEY_Alt_L) this._altActive = !this._altActive;
 
   if (this._controlActive) {
     this._virtualDevice.notify_keyval(
@@ -153,10 +100,9 @@ function override_keyvalPress(keyval) {
       Clutter.KEY_Control_L,
       Clutter.KeyState.RELEASED
     );
-    Main.layoutManager.keyboardBox.remove_style_class_name(
-      "control-key-latched"
-    );
+    Main.layoutManager.keyboardBox.remove_style_class_name("control-key-latched");
   }
+
   if (this._superActive) {
     this._virtualDevice.notify_keyval(
       Clutter.get_current_event_time(),
@@ -172,6 +118,7 @@ function override_keyvalPress(keyval) {
     );
     Main.layoutManager.keyboardBox.remove_style_class_name("super-key-latched");
   }
+
   if (this._altActive) {
     this._virtualDevice.notify_keyval(
       Clutter.get_current_event_time(),
@@ -187,11 +134,59 @@ function override_keyvalPress(keyval) {
     );
     Main.layoutManager.keyboardBox.remove_style_class_name("alt-key-latched");
   }
+
   this._virtualDevice.notify_keyval(
     Clutter.get_current_event_time(),
     keyval,
     Clutter.KeyState.PRESSED
   );
+}
+
+function override_keyvalRelease(keyval) {
+  // By default each key is released immediately after being pressed.
+  // Don't release ctrl/alt/super keys to allow them to be latched
+  // and used in "ctrl/alt/super + key" combinations
+  if (
+      keyval == Clutter.KEY_Control_L
+      || keyval == Clutter.KEY_Alt_L
+      || keyval == Clutter.KEY_Super_L
+  ) {
+    return;
+  }
+
+  this._virtualDevice.notify_keyval(
+      Clutter.get_current_event_time(),
+      keyval,
+      Clutter.KeyState.RELEASED
+  );
+
+  if (this._controlActive) {
+    this._virtualDevice.notify_keyval(
+        Clutter.get_current_event_time(),
+        Clutter.KEY_Control_L,
+        Clutter.KeyState.RELEASED
+    );
+    this._controlActive = false;
+    Main.layoutManager.keyboardBox.remove_style_class_name("control-key-latched");
+  }
+  if (this._superActive) {
+    this._virtualDevice.notify_keyval(
+        Clutter.get_current_event_time(),
+        Clutter.KEY_Super_L,
+        Clutter.KeyState.RELEASED
+    );
+    this._superActive = false;
+    Main.layoutManager.keyboardBox.remove_style_class_name("super-key-latched");
+  }
+  if (this._altActive) {
+    this._virtualDevice.notify_keyval(
+        Clutter.get_current_event_time(),
+        Clutter.KEY_Alt_L,
+        Clutter.KeyState.RELEASED
+    );
+    this._altActive = false;
+    Main.layoutManager.keyboardBox.remove_style_class_name("alt-key-latched");
+  }
 }
 
 function override_getDefaultKeysForRow(row, numRows, level) {
