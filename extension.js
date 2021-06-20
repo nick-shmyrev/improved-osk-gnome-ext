@@ -83,62 +83,77 @@ function override_relayout() {
 
 function override_keyvalPress(keyval) {
   // This allows manually releasing a latched ctrl/super/alt keys by tapping on them again
-  if (keyval == Clutter.KEY_Control_L) this._controlActive = !this._controlActive;
-  if (keyval == Clutter.KEY_Super_L) this._superActive = !this._superActive;
-  if (keyval == Clutter.KEY_Alt_L) this._altActive = !this._altActive;
+  if (keyval == Clutter.KEY_Control_L) {
+    this._controlActive = !this._controlActive;
 
-  if (this._controlActive) {
-    this._virtualDevice.notify_keyval(
-      Clutter.get_current_event_time(),
-      Clutter.KEY_Control_L,
-      Clutter.KeyState.PRESSED
-    );
-    Main.layoutManager.keyboardBox.add_style_class_name("control-key-latched");
-  } else {
-    this._virtualDevice.notify_keyval(
-      Clutter.get_current_event_time(),
-      Clutter.KEY_Control_L,
-      Clutter.KeyState.RELEASED
-    );
-    Main.layoutManager.keyboardBox.remove_style_class_name("control-key-latched");
+    if (this._controlActive) {
+      this._virtualDevice.notify_keyval(
+          Clutter.get_current_event_time(),
+          Clutter.KEY_Control_L,
+          Clutter.KeyState.PRESSED
+      );
+      Main.layoutManager.keyboardBox.add_style_class_name("control-key-latched");
+    } else {
+      this._virtualDevice.notify_keyval(
+          Clutter.get_current_event_time(),
+          Clutter.KEY_Control_L,
+          Clutter.KeyState.RELEASED
+      );
+      Main.layoutManager.keyboardBox.remove_style_class_name("control-key-latched");
+    }
+
+    return;
   }
 
-  if (this._superActive) {
-    this._virtualDevice.notify_keyval(
-      Clutter.get_current_event_time(),
-      Clutter.KEY_Super_L,
-      Clutter.KeyState.PRESSED
-    );
-    Main.layoutManager.keyboardBox.add_style_class_name("super-key-latched");
-  } else {
-    this._virtualDevice.notify_keyval(
-      Clutter.get_current_event_time(),
-      Clutter.KEY_Super_L,
-      Clutter.KeyState.RELEASED
-    );
-    Main.layoutManager.keyboardBox.remove_style_class_name("super-key-latched");
+  if (keyval == Clutter.KEY_Super_L) {
+    this._superActive = !this._superActive;
+
+    if (this._superActive) {
+      this._virtualDevice.notify_keyval(
+          Clutter.get_current_event_time(),
+          Clutter.KEY_Super_L,
+          Clutter.KeyState.PRESSED
+      );
+      Main.layoutManager.keyboardBox.add_style_class_name("super-key-latched");
+    } else {
+      this._virtualDevice.notify_keyval(
+          Clutter.get_current_event_time(),
+          Clutter.KEY_Super_L,
+          Clutter.KeyState.RELEASED
+      );
+      Main.layoutManager.keyboardBox.remove_style_class_name("super-key-latched");
+    }
+
+    return;
   }
 
-  if (this._altActive) {
-    this._virtualDevice.notify_keyval(
-      Clutter.get_current_event_time(),
-      Clutter.KEY_Alt_L,
-      Clutter.KeyState.PRESSED
-    );
-    Main.layoutManager.keyboardBox.add_style_class_name("alt-key-latched");
-  } else {
-    this._virtualDevice.notify_keyval(
-      Clutter.get_current_event_time(),
-      Clutter.KEY_Alt_L,
-      Clutter.KeyState.RELEASED
-    );
-    Main.layoutManager.keyboardBox.remove_style_class_name("alt-key-latched");
+  if (keyval == Clutter.KEY_Alt_L) {
+    this._altActive = !this._altActive;
+
+    if (this._altActive) {
+      this._virtualDevice.notify_keyval(
+          Clutter.get_current_event_time(),
+          Clutter.KEY_Alt_L,
+          Clutter.KeyState.PRESSED
+      );
+      Main.layoutManager.keyboardBox.add_style_class_name("alt-key-latched");
+    } else {
+      this._virtualDevice.notify_keyval(
+          Clutter.get_current_event_time(),
+          Clutter.KEY_Alt_L,
+          Clutter.KeyState.RELEASED
+      );
+      Main.layoutManager.keyboardBox.remove_style_class_name("alt-key-latched");
+    }
+
+    return;
   }
 
+  // Not a ctrl/super/alt key, continue down original execution path
   this._virtualDevice.notify_keyval(
-    Clutter.get_current_event_time(),
-    keyval,
-    Clutter.KeyState.PRESSED
+      Clutter.get_current_event_time(),
+      keyval,
+      Clutter.KeyState.PRESSED
   );
 }
 
