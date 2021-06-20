@@ -17,6 +17,7 @@ let backup_keyboardControllerConstructor;
 let backup_keyvalPress;
 let backup_keyvalRelease;
 let backup_commitString;
+let backup_loadDefaultKeys;
 let _indicator;
 
 let settings = ExtensionUtils.getSettings(
@@ -505,6 +506,99 @@ function override_commitString(string, fromKey) {
   // Fixes "ctrl/alt/super + key" combinations not working
   return false;
 }
+
+// Bulk of this method remains unchanged, except for extraButton.connect('released') event listener.
+// Overriding it to ensure latched ctrl/alt/super keys are released before keyboard is hidden
+function override_loadDefaultKeys(keys, layout, numLevels, numKeys) {
+  let extraButton;
+  for (let i = 0; i < keys.length; i++) {
+    let key = keys[i];
+    let keyval = key.keyval;
+    let switchToLevel = key.level;
+    let action = key.action;
+    let icon = key.icon;
+
+    /* Skip emoji button if necessary */
+    if (!this._emojiKeyVisible && action == 'emoji')
+      continue;
+
+    extraButton = new Keyboard.Key(key.label || '', [], icon);
+
+    extraButton.keyButton.add_style_class_name('default-key');
+    if (key.extraClassName != null)
+      extraButton.keyButton.add_style_class_name(key.extraClassName);
+    if (key.width != null)
+      extraButton.setWidth(key.width);
+
+    let actor = extraButton.keyButton;
+
+    extraButton.connect('pressed', () => {
+      if (switchToLevel != null) {
+        this._setActiveLayer(switchToLevel);
+        // Shift only gets latched on long press
+        this._latched = switchToLevel != 1;
+      } else if (keyval != null) {
+        this._keyboardController.keyvalPress(keyval);
+      }
+    });
+    extraButton.connect('released', () => {
+      // === Override starts here ===
+      if (keyval != null) return this._keyboardController.keyvalRelease(keyval);
+
+      switch (action) {
+        case 'hide':
+          // Press latched ctrl/super/alt keys again to release them before hiding OSK
+          if (this._keyboardController._controlActive) this._keyboardController.keyvalPress(Clutter.KEY_Control_L);
+          if (this._keyboardController._superActive) this._keyboardController.keyvalPress(Clutter.KEY_Super_L);
+          if (this._keyboardController._altActive) this._keyboardController.keyvalPress(Clutter.KEY_Alt_L);
+
+          this.close();
+          break;
+
+        case 'languageMenu':
+          this._popupLanguageMenu(actor);
+          break;
+
+        case 'emoji':
+          this._toggleEmoji();
+          break;
+
+        // no default
+      }
+      // === Override ends here ===
+    });
+
+    if (switchToLevel == 0) {
+      layout.shiftKeys.push(extraButton);
+    } else if (switchToLevel == 1) {
+      extraButton.connect('long-press', () => {
+        this._latched = true;
+        this._setCurrentLevelLatched(this._currentPage, this._latched);
+      });
+    }
+
+    /* Fixup default keys based on the number of levels/keys */
+    if (switchToLevel == 1 && numLevels == 3) {
+      // Hide shift key if the keymap has no uppercase level
+      if (key.right) {
+        /* Only hide the key actor, so the container still takes space */
+        extraButton.keyButton.hide();
+      } else {
+        extraButton.hide();
+      }
+      extraButton.setWidth(1.5);
+    } else if (key.right && numKeys > 8) {
+      extraButton.setWidth(2);
+    } else if (keyval == Clutter.KEY_Return && numKeys > 9) {
+      extraButton.setWidth(1.5);
+    } else if (!this._emojiKeyVisible && (action == 'hide' || action == 'languageMenu')) {
+      extraButton.setWidth(1.5);
+    }
+
+    layout.appendKey(extraButton, extraButton.keyButton.keyWidth);
+  }
+}
+
 /*
 To add a number row the KeyboardModel needs to be overriden but that will break the keyboard right now :(
 
@@ -543,52 +637,43 @@ let KeyboardModel = class {
 };
 */
 function enable_overrides() {
-  Keyboard.KeyboardManager.prototype[
-    "_lastDeviceIsTouchscreen"
-  ] = override_lastDeviceIsTouchScreen;
   Keyboard.Keyboard.prototype["_relayout"] = override_relayout;
-  Keyboard.Keyboard.prototype[
-    "_getDefaultKeysForRow"
-  ] = override_getDefaultKeysForRow;
-  Keyboard.KeyboardController.prototype[
-    "constructor"
-  ] = override_keyboardControllerConstructor;
+  Keyboard.Keyboard.prototype["_loadDefaultKeys"] = override_loadDefaultKeys;
+  Keyboard.Keyboard.prototype["_getDefaultKeysForRow"] = override_getDefaultKeysForRow;
+
+  Keyboard.KeyboardController.prototype["constructor"] = override_keyboardControllerConstructor;
   Keyboard.KeyboardController.prototype["keyvalPress"] = override_keyvalPress;
-  Keyboard.KeyboardController.prototype[
-    "keyvalRelease"
-  ] = override_keyvalRelease;
+  Keyboard.KeyboardController.prototype["keyvalRelease"] = override_keyvalRelease;
   Keyboard.KeyboardController.prototype["commitString"] = override_commitString;
+
+  Keyboard.KeyboardManager.prototype["_lastDeviceIsTouchscreen"] = override_lastDeviceIsTouchScreen;
 }
 
 function disable_overrides() {
-  Keyboard.Keyboard.prototype[
-    "_getDefaultKeysForRow"
-  ] = backup_DefaultKeysForRow;
+  Keyboard.Keyboard.prototype["_relayout"] = backup_relayout;
+  Keyboard.Keyboard.prototype["_loadDefaultKeys"] = backup_loadDefaultKeys;
+  Keyboard.Keyboard.prototype["_getDefaultKeysForRow"] = backup_DefaultKeysForRow;
 
-  Keyboard.KeyboardController.prototype[
-    "constructor"
-  ] = backup_keyboardControllerConstructor;
+  Keyboard.KeyboardController.prototype["constructor"] = backup_keyboardControllerConstructor;
   Keyboard.KeyboardController.prototype["keyvalPress"] = backup_keyvalPress;
   Keyboard.KeyboardController.prototype["keyvalRelease"] = backup_keyvalRelease;
-  Keyboard.Keyboard.prototype["_relayout"] = backup_relayout;
-  Keyboard.KeyboardManager.prototype[
-    "_lastDeviceIsTouchscreen"
-  ] = backup_lastDeviceIsTouchScreen;
   Keyboard.KeyboardController.prototype["commitString"] = backup_commitString;
+
+  Keyboard.KeyboardManager.prototype["_lastDeviceIsTouchscreen"] = backup_lastDeviceIsTouchScreen;
 }
 
 // Extension
 function init() {
-  backup_lastDeviceIsTouchScreen =
-    Keyboard.KeyboardManager._lastDeviceIsTouchscreen;
-  backup_DefaultKeysForRow =
-    Keyboard.Keyboard.prototype["_getDefaultKeysForRow"];
-  backup_keyboardControllerConstructor =
-    Keyboard.KeyboardController.prototype["constructor"];
+  backup_relayout = Keyboard.Keyboard.prototype["_relayout"];
+  backup_loadDefaultKeys = Keyboard.Keyboard.prototype["_loadDefaultKeys"]
+  backup_DefaultKeysForRow = Keyboard.Keyboard.prototype["_getDefaultKeysForRow"];
+
+  backup_keyboardControllerConstructor = Keyboard.KeyboardController.prototype["constructor"];
   backup_keyvalPress = Keyboard.KeyboardController.prototype["keyvalPress"];
   backup_keyvalRelease = Keyboard.KeyboardController.prototype["keyvalRelease"];
-  backup_relayout = Keyboard.Keyboard.prototype["_relayout"];
   backup_commitString = Keyboard.KeyboardController.prototype["commitString"];
+
+  backup_lastDeviceIsTouchScreen = Keyboard.KeyboardManager._lastDeviceIsTouchscreen;
 }
 
 function enable() {
